@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { UserProvider } from './context';
@@ -65,6 +64,7 @@ createRoot(rootElement).render(
   <React.StrictMode>
     <UserProvider>
       <React.Suspense fallback={<LoadingState />}>
+        {/* Ad Placeholder */}
         <App />
       </React.Suspense>
     </UserProvider>
