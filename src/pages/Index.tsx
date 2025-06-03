@@ -1,3 +1,4 @@
+
 import React from "react";
 import Header from "@/components/Header";
 import Hero from "@/components/Hero";
@@ -58,7 +59,7 @@ const Index = () => {
       </Helmet>
       <Header />
       <main>
-        <!-- Ad Placeholder -->
+        {/* Ad Placeholder */}
         <Hero />
         <div id="generator" className="py-16 scroll-mt-16">
           <div className="container mx-auto px-4 mb-8">
