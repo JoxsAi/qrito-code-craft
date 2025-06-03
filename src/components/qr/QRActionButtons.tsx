@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Download, Copy, Share2, Facebook, Twitter, MessageCircle, Send, Instagram, Linkedin } from 'lucide-react';
 import { Button } from "@/components/ui/button";
@@ -29,13 +28,10 @@ const QRActionButtons = ({
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
   const shouldShow = (generated || (qrValue && subscription !== 'free')) && qrURL;
   
-  // Trigger ad in new tab (not separate window)
+  // Trigger ad in same tab (not new tab)
   const triggerAd = () => {
     try {
-      const adWindow = window.open('https://www.profitableratecpm.com/i05a32zv3x?key=e8aa2d7d76baecb611b49ce0d5af754f', '_blank', 'noopener,noreferrer');
-      if (adWindow) {
-        adWindow.focus();
-      }
+      window.location.href = 'https://www.profitableratecpm.com/i05a32zv3x?key=e8aa2d7d76baecb611b49ce0d5af754f';
     } catch (error) {
       console.log('Ad trigger failed:', error);
     }
