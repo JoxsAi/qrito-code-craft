@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Share2, Copy, QrCode, X } from 'lucide-react';
+import { Share2, Copy, QrCode, X, MessageCircle, Send, Mail, Phone, Twitter } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -19,20 +19,18 @@ interface QRShareDialogProps {
 
 const QRShareDialog = ({ isOpen, onClose, qrValue, qrURL }: QRShareDialogProps) => {
   const { toast } = useToast();
-  const [copied, setCopied] = useState(false);
+  const [contentCopied, setContentCopied] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
-  const shareTitle = "QR Code from QRito";
-  const shareText = "Check out this QR code I created with QRito!";
-
-  const copyToClipboard = async () => {
+  const copyContent = async () => {
     try {
       await navigator.clipboard.writeText(qrValue);
-      setCopied(true);
+      setContentCopied(true);
       toast({
         title: "Copied!",
         description: "QR code content copied to clipboard",
       });
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setContentCopied(false), 2000);
     } catch (error) {
       // Fallback for older browsers
       const textArea = document.createElement("textarea");
@@ -42,48 +40,79 @@ const QRShareDialog = ({ isOpen, onClose, qrValue, qrURL }: QRShareDialogProps) 
       document.execCommand('copy');
       document.body.removeChild(textArea);
       
-      setCopied(true);
+      setContentCopied(true);
       toast({
         title: "Copied!",
         description: "QR code content copied to clipboard",
       });
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setContentCopied(false), 2000);
     }
   };
 
-  const getQRPreviewDataUrl = (): string => {
-    const svg = document.getElementById("qr-code-svg");
-    if (!svg) return '';
-    
+  const copyLink = async () => {
     try {
-      const svgData = new XMLSerializer().serializeToString(svg);
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-      const img = new Image();
-      
-      canvas.width = 200;
-      canvas.height = 200;
-      
-      if (ctx) {
-        ctx.fillStyle = 'white';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        const svgBlob = new Blob([svgData], { type: "image/svg+xml" });
-        const url = URL.createObjectURL(svgBlob);
-        
-        img.onload = () => {
-          ctx.drawImage(img, 0, 0, 200, 200);
-          URL.revokeObjectURL(url);
-        };
-        
-        img.src = url;
-        return canvas.toDataURL('image/png');
-      }
+      await navigator.clipboard.writeText(qrURL);
+      setLinkCopied(true);
+      toast({
+        title: "Copied!",
+        description: "QR code link copied to clipboard",
+      });
+      setTimeout(() => setLinkCopied(false), 2000);
     } catch (error) {
-      console.log('Error generating QR preview:', error);
+      // Fallback for older browsers
+      const textArea = document.createElement("textarea");
+      textArea.value = qrURL;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      
+      setLinkCopied(true);
+      toast({
+        title: "Copied!",
+        description: "QR code link copied to clipboard",
+      });
+      setTimeout(() => setLinkCopied(false), 2000);
+    }
+  };
+
+  const shareToSocial = (platform: string) => {
+    const shareText = `Check out this QR code I created with QRito!`;
+    const shareUrl = encodeURIComponent(qrValue);
+    const encodedText = encodeURIComponent(shareText);
+    
+    let url = '';
+    
+    switch (platform) {
+      case 'whatsapp':
+        url = `https://wa.me/?text=${encodedText}%20${shareUrl}`;
+        break;
+      case 'telegram':
+        url = `https://t.me/share/url?url=${shareUrl}&text=${encodedText}`;
+        break;
+      case 'messenger':
+        url = `https://www.messenger.com/t/?link=${shareUrl}`;
+        break;
+      case 'gmail':
+        url = `https://mail.google.com/mail/?view=cm&su=${encodedText}&body=${shareUrl}`;
+        break;
+      case 'sms':
+        url = `sms:?body=${encodedText}%20${shareUrl}`;
+        break;
+      case 'twitter':
+        url = `https://twitter.com/intent/tweet?text=${encodedText}&url=${shareUrl}`;
+        break;
+      default:
+        return;
     }
     
-    return '';
+    if (url) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+      toast({
+        title: "Opened Sharing",
+        description: `Opened ${platform} for sharing`,
+      });
+    }
   };
 
   return (
@@ -118,19 +147,90 @@ const QRShareDialog = ({ isOpen, onClose, qrValue, qrURL }: QRShareDialogProps) 
             </p>
           </div>
 
-          {/* Action Buttons */}
+          {/* Copy Buttons */}
           <div className="space-y-2">
             <Button 
-              onClick={copyToClipboard}
+              onClick={copyContent}
               variant="secondary" 
               className="w-full"
             >
               <Copy className="mr-2" size={16} />
-              {copied ? 'Copied!' : 'Copy Content'}
+              {contentCopied ? 'Content Copied!' : 'Copy Content'}
             </Button>
             
-            <div className="text-xs text-gray-500 text-center mt-4">
-              Share this QR code content with others
+            <Button 
+              onClick={copyLink}
+              variant="secondary" 
+              className="w-full"
+            >
+              <Copy className="mr-2" size={16} />
+              {linkCopied ? 'Link Copied!' : 'Copy Link'}
+            </Button>
+          </div>
+
+          {/* Quick Social Share */}
+          <div className="border-t pt-4">
+            <p className="text-sm text-gray-600 font-medium mb-3">Quick Share:</p>
+            <div className="grid grid-cols-3 gap-2">
+              <Button 
+                onClick={() => shareToSocial('whatsapp')}
+                variant="outline" 
+                size="sm"
+                className="flex items-center gap-1"
+              >
+                <MessageCircle size={14} className="text-green-600" />
+                <span className="text-xs">WhatsApp</span>
+              </Button>
+              
+              <Button 
+                onClick={() => shareToSocial('telegram')}
+                variant="outline" 
+                size="sm"
+                className="flex items-center gap-1"
+              >
+                <Send size={14} className="text-blue-500" />
+                <span className="text-xs">Telegram</span>
+              </Button>
+              
+              <Button 
+                onClick={() => shareToSocial('twitter')}
+                variant="outline" 
+                size="sm"
+                className="flex items-center gap-1"
+              >
+                <Twitter size={14} className="text-gray-800" />
+                <span className="text-xs">Twitter</span>
+              </Button>
+              
+              <Button 
+                onClick={() => shareToSocial('gmail')}
+                variant="outline" 
+                size="sm"
+                className="flex items-center gap-1"
+              >
+                <Mail size={14} className="text-red-600" />
+                <span className="text-xs">Gmail</span>
+              </Button>
+              
+              <Button 
+                onClick={() => shareToSocial('sms')}
+                variant="outline" 
+                size="sm"
+                className="flex items-center gap-1"
+              >
+                <Phone size={14} className="text-blue-600" />
+                <span className="text-xs">SMS</span>
+              </Button>
+              
+              <Button 
+                onClick={() => shareToSocial('messenger')}
+                variant="outline" 
+                size="sm"
+                className="flex items-center gap-1"
+              >
+                <MessageCircle size={14} className="text-blue-700" />
+                <span className="text-xs">Messenger</span>
+              </Button>
             </div>
           </div>
         </div>

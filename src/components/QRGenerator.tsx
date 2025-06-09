@@ -56,20 +56,20 @@ const QRGenerator = ({ type = 'url' }) => {
   const { isLoggedIn, incrementQRCount, subscription, canAddLogo } = useUser();
   const { toast } = useToast();
 
-  // Trigger ad on button clicks - MUST open in popup window to preserve QR code data
+  // Trigger ad on button clicks - MUST open in new tab to preserve QR code data
   const triggerAd = () => {
     try {
-      // Open ad in popup window with controlled dimensions
+      // Open ad in new tab
       const adWindow = window.open(
         'https://www.profitableratecpm.com/i05a32zv3x?key=e8aa2d7d76baecb611b49ce0d5af754f',
-        'adPopup',
-        'width=800,height=600,scrollbars=yes,resizable=yes,toolbar=no,menubar=no,location=no,status=no'
+        '_blank',
+        'noopener,noreferrer'
       );
       
       if (adWindow) {
         adWindow.focus();
       } else {
-        console.log('Ad popup blocked by browser');
+        console.log('Ad tab blocked by browser');
       }
     } catch (error) {
       console.log('Ad trigger failed:', error);

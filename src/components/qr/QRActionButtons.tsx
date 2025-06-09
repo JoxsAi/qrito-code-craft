@@ -1,14 +1,9 @@
+
 import React, { useState } from 'react';
-import { Download, Copy, Share2, Facebook, Twitter, MessageCircle, Send, Instagram, Linkedin, FileText } from 'lucide-react';
+import { Download, Copy, Share2, FileText } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useToast } from '@/hooks/use-toast';
 import QRShareDialog from './QRShareDialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
@@ -32,24 +27,23 @@ const QRActionButtons = ({
   imageFormat = 'svg'
 }: QRActionButtonsProps) => {
   const { toast } = useToast();
-  const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const shouldShow = (generated || (qrValue && subscription !== 'free')) && qrURL;
   
-  // Trigger ad in controlled popup window - preserves user data
+  // Trigger ad in new tab - preserves user data
   const triggerAd = () => {
     try {
-      // Open ad in popup window with controlled dimensions
+      // Open ad in new tab
       const adWindow = window.open(
         'https://www.profitableratecpm.com/i05a32zv3x?key=e8aa2d7d76baecb611b49ce0d5af754f',
-        'adPopup',
-        'width=800,height=600,scrollbars=yes,resizable=yes,toolbar=no,menubar=no,location=no,status=no'
+        '_blank',
+        'noopener,noreferrer'
       );
       
       if (adWindow) {
         adWindow.focus();
       } else {
-        console.log('Ad popup blocked by browser');
+        console.log('Ad tab blocked by browser');
       }
     } catch (error) {
       console.log('Ad trigger failed:', error);
@@ -207,12 +201,12 @@ const QRActionButtons = ({
   };
 
   const downloadQRCodeAsPDF = async () => {
-    // Check subscription - only for Pro users
-    if (subscription !== 'pro') {
+    // Check subscription - Pro or Business users
+    if (subscription !== 'pro' && subscription !== 'business') {
       toast({
         variant: "destructive",
         title: "Pro Feature",
-        description: "PDF download is only available for Pro plan users. Please upgrade to access this feature.",
+        description: "PDF download is only available for Pro and Business plan users. Please upgrade to access this feature.",
       });
       return;
     }
@@ -255,7 +249,7 @@ const QRActionButtons = ({
           // Convert to image data URL
           const imageDataUrl = canvas.toDataURL('image/png');
           
-          // Create PDF content using jsPDF-like approach
+          // Create PDF content using jsPDF
           const { jsPDF } = await import('jspdf');
           const pdf = new jsPDF({
             orientation: 'portrait',
@@ -348,101 +342,6 @@ const QRActionButtons = ({
       });
     }
   };
-
-  const shareToSocialMedia = async (platform: string) => {
-    triggerAd();
-    
-    const shareText = `Check out my QR code created with QRito!`;
-    
-    try {
-      // For platforms that support image sharing via Web Share API
-      if (navigator.share && (platform === 'whatsapp' || platform === 'telegram')) {
-        const qrBlob = await getQRCodeAsBlob();
-        const file = new File([qrBlob], 'qrcode.png', { type: 'image/png' });
-        
-        await navigator.share({
-          title: 'QR Code from QRito',
-          text: shareText,
-          files: [file]
-        });
-        
-        toast({
-          title: "Shared Successfully",
-          description: `Shared QR code via ${platform}`,
-        });
-        setIsShareMenuOpen(false);
-        return;
-      }
-    } catch (error) {
-      console.log('Native sharing failed, falling back to URL sharing:', error);
-    }
-    
-    // Fallback to URL sharing for all platforms
-    const shareUrl = encodeURIComponent(qrValue);
-    const encodedText = encodeURIComponent(shareText);
-    
-    let url = '';
-    
-    switch (platform) {
-      case 'facebook':
-        url = `https://www.facebook.com/sharer/sharer.php?u=${shareUrl}&quote=${encodedText}`;
-        break;
-      case 'twitter':
-        url = `https://twitter.com/intent/tweet?text=${encodedText}&url=${shareUrl}`;
-        break;
-      case 'linkedin':
-        url = `https://www.linkedin.com/sharing/share-offsite/?url=${shareUrl}&summary=${encodedText}`;
-        break;
-      case 'whatsapp':
-        url = `https://wa.me/?text=${encodedText}%20${shareUrl}`;
-        break;
-      case 'telegram':
-        url = `https://t.me/share/url?url=${shareUrl}&text=${encodedText}`;
-        break;
-      case 'instagram':
-        // Instagram doesn't support direct URL sharing
-        try {
-          const qrBlob = await getQRCodeAsBlob();
-          const qrUrl = URL.createObjectURL(qrBlob);
-          const link = document.createElement('a');
-          link.href = qrUrl;
-          link.download = 'qrcode.png';
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(qrUrl);
-          
-          copyQRCodeToClipboard();
-          toast({
-            title: "QR Code Downloaded for Instagram",
-            description: "QR image downloaded and content copied. Upload the image to Instagram with the copied text.",
-          });
-        } catch (error) {
-          copyQRCodeToClipboard();
-          toast({
-            title: "Content Copied",
-            description: "Content copied! Download the QR image and share on Instagram.",
-          });
-        }
-        setIsShareMenuOpen(false);
-        return;
-      default:
-        return;
-    }
-    
-    if (url) {
-      const shareWindow = window.open(url, '_blank', 'noopener,noreferrer');
-      if (shareWindow) {
-        shareWindow.focus();
-      }
-      toast({
-        title: "Opened Sharing",
-        description: `Opened ${platform} for sharing`,
-      });
-    }
-    
-    setIsShareMenuOpen(false);
-  };
   
   if (!shouldShow) return null;
   
@@ -459,8 +358,8 @@ const QRActionButtons = ({
             Download QR Code
           </Button>
           
-          {/* PDF Download - Only for Pro users */}
-          {subscription === 'pro' ? (
+          {/* PDF Download - Pro and Business users */}
+          {(subscription === 'pro' || subscription === 'business') ? (
             <Button 
               onClick={downloadQRCodeAsPDF} 
               variant="secondary" 
@@ -482,7 +381,7 @@ const QRActionButtons = ({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>PDF download is available for Pro plan users only</p>
+                <p>PDF download is available for Pro and Business plan users only</p>
               </TooltipContent>
             </Tooltip>
           )}
@@ -496,7 +395,7 @@ const QRActionButtons = ({
             Copy Content
           </Button>
           
-          {/* Modern Share Button - Replaced old dropdown with new implementation */}
+          {/* Updated Share Button */}
           <Button 
             onClick={handleShare}
             variant="secondary" 
@@ -505,41 +404,6 @@ const QRActionButtons = ({
             <Share2 className="mr-2" size={16} />
             Share QR Code
           </Button>
-          
-          {/* Social Media Sharing - Secondary option */}
-          <DropdownMenu open={isShareMenuOpen} onOpenChange={setIsShareMenuOpen}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-full text-sm">
-                Share to Social Media
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-48">
-              <DropdownMenuItem onClick={() => shareToSocialMedia('whatsapp')} className="cursor-pointer">
-                <MessageCircle className="mr-2 text-green-600" size={16} />
-                WhatsApp
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => shareToSocialMedia('facebook')} className="cursor-pointer">
-                <Facebook className="mr-2 text-blue-600" size={16} />
-                Facebook
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => shareToSocialMedia('telegram')} className="cursor-pointer">
-                <Send className="mr-2 text-blue-500" size={16} />
-                Telegram
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => shareToSocialMedia('twitter')} className="cursor-pointer">
-                <Twitter className="mr-2 text-gray-800" size={16} />
-                Twitter (X)
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => shareToSocialMedia('linkedin')} className="cursor-pointer">
-                <Linkedin className="mr-2 text-blue-700" size={16} />
-                LinkedIn
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => shareToSocialMedia('instagram')} className="cursor-pointer">
-                <Instagram className="mr-2 text-pink-600" size={16} />
-                Instagram
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
         
         {/* Share Dialog for desktop fallback */}
