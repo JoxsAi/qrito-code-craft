@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { UserProvider } from './context';
@@ -18,29 +19,39 @@ const LoadingState = () => (
   </div>
 );
 
-// Function to load ads on homepage with better error handling for deployment
-const loadAds = () => {
+// Function to load homepage ads immediately when site opens
+const loadHomepageAd = () => {
   try {
-    // Only load on homepage and in production
+    // Only load on homepage and not localhost
     if ((window.location.pathname === '/' || window.location.pathname === '/index.html') && 
         typeof window !== 'undefined' && 
         window.location.hostname !== 'localhost') {
+      
+      // Remove any existing ad scripts first
+      const existingScript = document.querySelector('script[src*="profitableratecpm.com"]');
+      if (existingScript) {
+        existingScript.remove();
+      }
       
       const script = document.createElement('script');
       script.type = 'text/javascript';
       script.src = '//pl26659143.profitableratecpm.com/60/df/38/60df386dd2cfa2ac4a8c1e4294a705c6.js';
       script.async = true;
-      script.defer = true;
       
-      // Add error handling
-      script.onerror = () => {
-        console.log('Ad script failed to load');
+      // Load immediately when site opens
+      script.onload = () => {
+        console.log('Homepage ad loaded successfully');
       };
       
-      document.body.appendChild(script);
+      script.onerror = () => {
+        console.log('Homepage ad failed to load');
+      };
+      
+      // Append to head for immediate loading
+      document.head.appendChild(script);
     }
   } catch (error) {
-    console.log('Error loading ad script:', error);
+    console.log('Error loading homepage ad script:', error);
   }
 };
 
@@ -48,14 +59,13 @@ const loadAds = () => {
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("Failed to find the root element");
 
-// Load ads after DOM is ready
+// Load ads immediately when site opens
 if (typeof window !== 'undefined') {
-  document.addEventListener('DOMContentLoaded', loadAds);
-  // Fallback if DOMContentLoaded already fired
+  // Load immediately if DOM is ready
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', loadAds);
+    document.addEventListener('DOMContentLoaded', loadHomepageAd);
   } else {
-    loadAds();
+    loadHomepageAd();
   }
 }
 
@@ -64,7 +74,6 @@ createRoot(rootElement).render(
   <React.StrictMode>
     <UserProvider>
       <React.Suspense fallback={<LoadingState />}>
-        {/* Ad Placeholder */}
         <App />
       </React.Suspense>
     </UserProvider>
