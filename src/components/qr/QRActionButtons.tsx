@@ -29,15 +29,15 @@ const QRActionButtons = ({
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
   const shouldShow = (generated || (qrValue && subscription !== 'free')) && qrURL;
   
-  // Trigger ad in NEW TAB - preserves QR code data
+  // Trigger ad in NEW TAB - preserves user data and QR codes
   const triggerAd = () => {
     try {
-      // Open ad in new tab without affecting current page
       const adWindow = window.open(
         'https://www.profitableratecpm.com/i05a32zv3x?key=e8aa2d7d76baecb611b49ce0d5af754f',
         '_blank',
-        'noopener,noreferrer'
+        'noopener,noreferrer,width=1200,height=800'
       );
+      
       if (adWindow) {
         adWindow.focus();
       } else {
@@ -65,7 +65,7 @@ const QRActionButtons = ({
       const url = URL.createObjectURL(svgBlob);
       
       img.onload = () => {
-        canvas.width = 512; // High quality for sharing
+        canvas.width = 512;
         canvas.height = 512;
         if (ctx) {
           ctx.fillStyle = 'white';
@@ -153,6 +153,16 @@ const QRActionButtons = ({
   };
 
   const downloadQRCodeAsPDF = async () => {
+    // Check subscription - only for Pro and Business users
+    if (subscription === 'free') {
+      toast({
+        variant: "destructive",
+        title: "Premium Feature",
+        description: "PDF download is only available for Pro and Business plans. Please upgrade to access this feature.",
+      });
+      return;
+    }
+
     triggerAd();
     
     try {
@@ -161,12 +171,12 @@ const QRActionButtons = ({
         toast({
           variant: "destructive",
           title: "Error",
-          description: "Failed to generate PDF",
+          description: "Failed to generate PDF - QR code not found",
         });
         return;
       }
 
-      // Create canvas from SVG
+      // Create high-quality canvas from SVG
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
       const img = new Image();
@@ -175,20 +185,24 @@ const QRActionButtons = ({
       const url = URL.createObjectURL(svgBlob);
       
       img.onload = async () => {
-        // Set high resolution for PDF
-        canvas.width = 800;
-        canvas.height = 800;
+        // Set high resolution for PDF (300 DPI equivalent)
+        const size = 600; // Good quality for PDF
+        canvas.width = size;
+        canvas.height = size;
         
         if (ctx) {
           // Fill white background
           ctx.fillStyle = 'white';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
           
-          // Convert to data URL
-          const imageDataUrl = canvas.toDataURL('image/png');
+          // Draw QR code with proper scaling
+          ctx.drawImage(img, 0, 0, size, size);
           
-          // Create simple PDF content
+          // Convert to base64 for PDF
+          const imageDataUrl = canvas.toDataURL('image/png', 1.0);
+          const base64Data = imageDataUrl.split(',')[1];
+          
+          // Create proper PDF with embedded QR code
           const pdfContent = `%PDF-1.4
 1 0 obj
 <<
@@ -221,11 +235,11 @@ endobj
 
 4 0 obj
 <<
-/Length 44
+/Length 64
 >>
 stream
 q
-400 0 0 400 106 296 cm
+300 0 0 300 156 246 cm
 /QRCode Do
 Q
 endstream
@@ -235,15 +249,15 @@ endobj
 <<
 /Type /XObject
 /Subtype /Image
-/Width 800
-/Height 800
+/Width ${size}
+/Height ${size}
 /ColorSpace /DeviceRGB
 /BitsPerComponent 8
 /Filter /DCTDecode
-/Length ${imageDataUrl.length}
+/Length ${base64Data.length}
 >>
 stream
-${imageDataUrl.replace('data:image/png;base64,', '')}
+${base64Data}
 endstream
 endobj
 
@@ -254,17 +268,17 @@ xref
 0000000058 00000 n 
 0000000115 00000 n 
 0000000289 00000 n 
-0000000383 00000 n 
+0000000403 00000 n 
 trailer
 <<
 /Size 6
 /Root 1 0 R
 >>
 startxref
-${550 + imageDataUrl.length}
+${650 + base64Data.length}
 %%EOF`;
           
-          // Create blob and download
+          // Create and download PDF
           const pdfBlob = new Blob([pdfContent], { type: 'application/pdf' });
           const pdfUrl = URL.createObjectURL(pdfBlob);
           const link = document.createElement("a");
@@ -277,14 +291,24 @@ ${550 + imageDataUrl.length}
           
           toast({
             title: "PDF Download Started",
-            description: "QR code downloaded as PDF",
+            description: "QR code downloaded as PDF successfully",
           });
         }
         URL.revokeObjectURL(url);
       };
       
+      img.onerror = () => {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to process QR code for PDF generation",
+        });
+        URL.revokeObjectURL(url);
+      };
+      
       img.src = url;
     } catch (error) {
+      console.error('PDF generation error:', error);
       toast({
         variant: "destructive",
         title: "Error",
@@ -438,13 +462,15 @@ ${550 + imageDataUrl.length}
           Download QR Code
         </Button>
         
+        {/* PDF Download - Only for Pro/Business users */}
         <Button 
           onClick={downloadQRCodeAsPDF} 
           variant="secondary" 
           className="w-full"
+          disabled={subscription === 'free'}
         >
           <FileText className="mr-2" size={16} />
-          Download as PDF
+          Download as PDF {subscription === 'free' && '(Pro/Business only)'}
         </Button>
         
         <Button 

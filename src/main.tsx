@@ -19,7 +19,7 @@ const LoadingState = () => (
   </div>
 );
 
-// Function to load homepage ads immediately when site opens
+// Function to load homepage ads immediately
 const loadHomepageAd = () => {
   try {
     // Only load on homepage and not localhost
@@ -36,19 +36,29 @@ const loadHomepageAd = () => {
       const script = document.createElement('script');
       script.type = 'text/javascript';
       script.src = '//pl26659143.profitableratecpm.com/60/df/38/60df386dd2cfa2ac4a8c1e4294a705c6.js';
-      script.async = true;
+      script.async = false; // Load synchronously for immediate display
       
       // Load immediately when site opens
       script.onload = () => {
         console.log('Homepage ad loaded successfully');
+        // Try to find and position the ad
+        setTimeout(() => {
+          const adElements = document.querySelectorAll('[id*="profitablerate"], [class*="profitablerate"]');
+          adElements.forEach(el => {
+            if (el.parentElement) {
+              el.parentElement.style.textAlign = 'center';
+              el.parentElement.style.margin = '10px auto';
+            }
+          });
+        }, 1000);
       };
       
       script.onerror = () => {
         console.log('Homepage ad failed to load');
       };
       
-      // Append to head for immediate loading
-      document.head.appendChild(script);
+      // Append to body for immediate execution
+      document.body.appendChild(script);
     }
   } catch (error) {
     console.log('Error loading homepage ad script:', error);
@@ -67,6 +77,9 @@ if (typeof window !== 'undefined') {
   } else {
     loadHomepageAd();
   }
+  
+  // Also ensure it loads after React renders
+  setTimeout(loadHomepageAd, 500);
 }
 
 // Render with Suspense for better UX during loading

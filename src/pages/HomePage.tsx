@@ -59,8 +59,21 @@ const HomePage = () => {
       </Helmet>
       <Header />
       <main>
-        {/* Ad Placeholder */}
         <Hero />
+        
+        {/* Homepage Ad Container - positioned after hero */}
+        <div className="py-4">
+          <div className="container mx-auto px-4">
+            <div 
+              id="homepage-ad-container" 
+              className="text-center max-w-4xl mx-auto"
+              style={{ minHeight: '90px' }}
+            >
+              {/* Ad script will inject content here */}
+            </div>
+          </div>
+        </div>
+        
         <div id="generator" className="py-16 scroll-mt-16">
           <div className="container mx-auto px-4 mb-8">
             <h2 className="text-2xl md:text-3xl font-bold text-center mb-3">
@@ -72,6 +85,7 @@ const HomePage = () => {
           </div>
           <QRGenerator />
         </div>
+        
         <section aria-labelledby="features-heading">
           <Features />
         </section>
