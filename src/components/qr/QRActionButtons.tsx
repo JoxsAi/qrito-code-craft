@@ -1,8 +1,8 @@
-
 import React, { useState } from 'react';
 import { Download, Copy, Share2, Facebook, Twitter, MessageCircle, Send, Instagram, Linkedin, FileText } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useToast } from '@/hooks/use-toast';
+import QRShareDialog from './QRShareDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +33,7 @@ const QRActionButtons = ({
 }: QRActionButtonsProps) => {
   const { toast } = useToast();
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const shouldShow = (generated || (qrValue && subscription !== 'free')) && qrURL;
   
   // Trigger ad in controlled popup window - preserves user data
@@ -98,6 +99,52 @@ const QRActionButtons = ({
       
       img.src = url;
     });
+  };
+
+  // Modern share handler with fallbacks
+  const handleShare = async () => {
+    triggerAd();
+    
+    const shareData = {
+      title: 'QR Code from QRito',
+      text: 'Check out this QR code I created with QRito!',
+      url: qrValue,
+    };
+
+    // Check if native sharing is supported (mobile devices)
+    if (navigator.share) {
+      try {
+        // Try to share with image if possible
+        const qrBlob = await getQRCodeAsBlob();
+        const file = new File([qrBlob], 'qrcode.png', { type: 'image/png' });
+        
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            ...shareData,
+            files: [file]
+          });
+        } else {
+          // Fallback to text sharing
+          await navigator.share(shareData);
+        }
+        
+        toast({
+          title: "Shared Successfully",
+          description: "QR code shared via system share menu",
+        });
+        return;
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.log('Native sharing failed:', error);
+        } else {
+          // User cancelled the share
+          return;
+        }
+      }
+    }
+    
+    // Fallback: Open custom share dialog for desktop
+    setIsShareDialogOpen(true);
   };
   
   const downloadQRCode = () => {
@@ -449,11 +496,21 @@ const QRActionButtons = ({
             Copy Content
           </Button>
           
+          {/* Modern Share Button - Replaced old dropdown with new implementation */}
+          <Button 
+            onClick={handleShare}
+            variant="secondary" 
+            className="w-full"
+          >
+            <Share2 className="mr-2" size={16} />
+            Share QR Code
+          </Button>
+          
+          {/* Social Media Sharing - Secondary option */}
           <DropdownMenu open={isShareMenuOpen} onOpenChange={setIsShareMenuOpen}>
             <DropdownMenuTrigger asChild>
-              <Button variant="secondary" className="w-full">
-                <Share2 className="mr-2" size={16} />
-                Share QR Code
+              <Button variant="outline" className="w-full text-sm">
+                Share to Social Media
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-48">
@@ -484,6 +541,14 @@ const QRActionButtons = ({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+        
+        {/* Share Dialog for desktop fallback */}
+        <QRShareDialog
+          isOpen={isShareDialogOpen}
+          onClose={() => setIsShareDialogOpen(false)}
+          qrValue={qrValue}
+          qrURL={qrURL}
+        />
       </div>
     </TooltipProvider>
   );
