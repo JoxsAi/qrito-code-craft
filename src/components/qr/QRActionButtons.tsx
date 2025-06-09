@@ -9,6 +9,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface QRActionButtonsProps {
   generated: boolean;
@@ -29,13 +35,14 @@ const QRActionButtons = ({
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
   const shouldShow = (generated || (qrValue && subscription !== 'free')) && qrURL;
   
-  // Trigger ad in NEW TAB - preserves user data and QR codes
+  // Trigger ad in controlled popup window - preserves user data
   const triggerAd = () => {
     try {
+      // Open ad in popup window with controlled dimensions
       const adWindow = window.open(
         'https://www.profitableratecpm.com/i05a32zv3x?key=e8aa2d7d76baecb611b49ce0d5af754f',
-        '_blank',
-        'noopener,noreferrer,width=1200,height=800'
+        'adPopup',
+        'width=800,height=600,scrollbars=yes,resizable=yes,toolbar=no,menubar=no,location=no,status=no'
       );
       
       if (adWindow) {
@@ -153,12 +160,12 @@ const QRActionButtons = ({
   };
 
   const downloadQRCodeAsPDF = async () => {
-    // Check subscription - only for Pro and Business users
-    if (subscription === 'free') {
+    // Check subscription - only for Pro users
+    if (subscription !== 'pro') {
       toast({
         variant: "destructive",
-        title: "Premium Feature",
-        description: "PDF download is only available for Pro and Business plans. Please upgrade to access this feature.",
+        title: "Pro Feature",
+        description: "PDF download is only available for Pro plan users. Please upgrade to access this feature.",
       });
       return;
     }
@@ -176,7 +183,7 @@ const QRActionButtons = ({
         return;
       }
 
-      // Create high-quality canvas from SVG
+      // Get QR code as high-quality image data
       const canvas = document.createElement("canvas");
       const ctx = canvas.getContext("2d");
       const img = new Image();
@@ -185,8 +192,8 @@ const QRActionButtons = ({
       const url = URL.createObjectURL(svgBlob);
       
       img.onload = async () => {
-        // Set high resolution for PDF (300 DPI equivalent)
-        const size = 600; // Good quality for PDF
+        // Set high resolution for PDF quality
+        const size = 400;
         canvas.width = size;
         canvas.height = size;
         
@@ -195,99 +202,41 @@ const QRActionButtons = ({
           ctx.fillStyle = 'white';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           
-          // Draw QR code with proper scaling
+          // Draw QR code
           ctx.drawImage(img, 0, 0, size, size);
           
-          // Convert to base64 for PDF
-          const imageDataUrl = canvas.toDataURL('image/png', 1.0);
-          const base64Data = imageDataUrl.split(',')[1];
+          // Convert to image data URL
+          const imageDataUrl = canvas.toDataURL('image/png');
           
-          // Create proper PDF with embedded QR code
-          const pdfContent = `%PDF-1.4
-1 0 obj
-<<
-/Type /Catalog
-/Pages 2 0 R
->>
-endobj
-
-2 0 obj
-<<
-/Type /Pages
-/Kids [3 0 R]
-/Count 1
->>
-endobj
-
-3 0 obj
-<<
-/Type /Page
-/Parent 2 0 R
-/MediaBox [0 0 612 792]
-/Contents 4 0 R
-/Resources <<
-  /XObject <<
-    /QRCode 5 0 R
-  >>
->>
->>
-endobj
-
-4 0 obj
-<<
-/Length 64
->>
-stream
-q
-300 0 0 300 156 246 cm
-/QRCode Do
-Q
-endstream
-endobj
-
-5 0 obj
-<<
-/Type /XObject
-/Subtype /Image
-/Width ${size}
-/Height ${size}
-/ColorSpace /DeviceRGB
-/BitsPerComponent 8
-/Filter /DCTDecode
-/Length ${base64Data.length}
->>
-stream
-${base64Data}
-endstream
-endobj
-
-xref
-0 6
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000289 00000 n 
-0000000403 00000 n 
-trailer
-<<
-/Size 6
-/Root 1 0 R
->>
-startxref
-${650 + base64Data.length}
-%%EOF`;
+          // Create PDF content using jsPDF-like approach
+          const { jsPDF } = await import('jspdf');
+          const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4'
+          });
           
-          // Create and download PDF
-          const pdfBlob = new Blob([pdfContent], { type: 'application/pdf' });
-          const pdfUrl = URL.createObjectURL(pdfBlob);
-          const link = document.createElement("a");
-          link.href = pdfUrl;
-          link.download = "qrcode.pdf";
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(pdfUrl);
+          // Calculate center position
+          const pageWidth = pdf.internal.pageSize.getWidth();
+          const pageHeight = pdf.internal.pageSize.getHeight();
+          const imgWidth = 100; // 100mm width
+          const imgHeight = 100; // 100mm height
+          const x = (pageWidth - imgWidth) / 2;
+          const y = (pageHeight - imgHeight) / 2;
+          
+          // Add QR code image to PDF
+          pdf.addImage(imageDataUrl, 'PNG', x, y, imgWidth, imgHeight);
+          
+          // Add title
+          pdf.setFontSize(16);
+          pdf.text('QR Code', pageWidth / 2, y - 20, { align: 'center' });
+          
+          // Add content info
+          pdf.setFontSize(10);
+          pdf.text(`Content: ${qrValue.substring(0, 50)}${qrValue.length > 50 ? '...' : ''}`, pageWidth / 2, y + imgHeight + 15, { align: 'center' });
+          
+          // Save the PDF
+          pdf.save('qrcode.pdf');
           
           toast({
             title: "PDF Download Started",
@@ -312,7 +261,7 @@ ${650 + base64Data.length}
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to generate PDF",
+        description: "Failed to generate PDF. Please try again.",
       });
     }
   };
@@ -451,73 +400,92 @@ ${650 + base64Data.length}
   if (!shouldShow) return null;
   
   return (
-    <div className="mt-6">
-      <div className="flex flex-col space-y-2">
-        <Button 
-          onClick={downloadQRCode} 
-          variant="secondary" 
-          className="w-full"
-        >
-          <Download className="mr-2" size={16} />
-          Download QR Code
-        </Button>
-        
-        {/* PDF Download - Only for Pro/Business users */}
-        <Button 
-          onClick={downloadQRCodeAsPDF} 
-          variant="secondary" 
-          className="w-full"
-          disabled={subscription === 'free'}
-        >
-          <FileText className="mr-2" size={16} />
-          Download as PDF {subscription === 'free' && '(Pro/Business only)'}
-        </Button>
-        
-        <Button 
-          onClick={copyQRCodeToClipboard} 
-          variant="secondary" 
-          className="w-full"
-        >
-          <Copy className="mr-2" size={16} />
-          Copy Content
-        </Button>
-        
-        <DropdownMenu open={isShareMenuOpen} onOpenChange={setIsShareMenuOpen}>
-          <DropdownMenuTrigger asChild>
-            <Button variant="secondary" className="w-full">
-              <Share2 className="mr-2" size={16} />
-              Share QR Code
+    <TooltipProvider>
+      <div className="mt-6">
+        <div className="flex flex-col space-y-2">
+          <Button 
+            onClick={downloadQRCode} 
+            variant="secondary" 
+            className="w-full"
+          >
+            <Download className="mr-2" size={16} />
+            Download QR Code
+          </Button>
+          
+          {/* PDF Download - Only for Pro users */}
+          {subscription === 'pro' ? (
+            <Button 
+              onClick={downloadQRCodeAsPDF} 
+              variant="secondary" 
+              className="w-full"
+            >
+              <FileText className="mr-2" size={16} />
+              Download as PDF
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-48">
-            <DropdownMenuItem onClick={() => shareToSocialMedia('whatsapp')} className="cursor-pointer">
-              <MessageCircle className="mr-2 text-green-600" size={16} />
-              WhatsApp
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => shareToSocialMedia('facebook')} className="cursor-pointer">
-              <Facebook className="mr-2 text-blue-600" size={16} />
-              Facebook
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => shareToSocialMedia('telegram')} className="cursor-pointer">
-              <Send className="mr-2 text-blue-500" size={16} />
-              Telegram
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => shareToSocialMedia('twitter')} className="cursor-pointer">
-              <Twitter className="mr-2 text-gray-800" size={16} />
-              Twitter (X)
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => shareToSocialMedia('linkedin')} className="cursor-pointer">
-              <Linkedin className="mr-2 text-blue-700" size={16} />
-              LinkedIn
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => shareToSocialMedia('instagram')} className="cursor-pointer">
-              <Instagram className="mr-2 text-pink-600" size={16} />
-              Instagram
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button 
+                  variant="secondary" 
+                  className="w-full opacity-50 cursor-not-allowed"
+                  disabled
+                >
+                  <FileText className="mr-2" size={16} />
+                  Download as PDF (Pro only)
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>PDF download is available for Pro plan users only</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+          
+          <Button 
+            onClick={copyQRCodeToClipboard} 
+            variant="secondary" 
+            className="w-full"
+          >
+            <Copy className="mr-2" size={16} />
+            Copy Content
+          </Button>
+          
+          <DropdownMenu open={isShareMenuOpen} onOpenChange={setIsShareMenuOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="secondary" className="w-full">
+                <Share2 className="mr-2" size={16} />
+                Share QR Code
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-48">
+              <DropdownMenuItem onClick={() => shareToSocialMedia('whatsapp')} className="cursor-pointer">
+                <MessageCircle className="mr-2 text-green-600" size={16} />
+                WhatsApp
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => shareToSocialMedia('facebook')} className="cursor-pointer">
+                <Facebook className="mr-2 text-blue-600" size={16} />
+                Facebook
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => shareToSocialMedia('telegram')} className="cursor-pointer">
+                <Send className="mr-2 text-blue-500" size={16} />
+                Telegram
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => shareToSocialMedia('twitter')} className="cursor-pointer">
+                <Twitter className="mr-2 text-gray-800" size={16} />
+                Twitter (X)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => shareToSocialMedia('linkedin')} className="cursor-pointer">
+                <Linkedin className="mr-2 text-blue-700" size={16} />
+                LinkedIn
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => shareToSocialMedia('instagram')} className="cursor-pointer">
+                <Instagram className="mr-2 text-pink-600" size={16} />
+                Instagram
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 };
 

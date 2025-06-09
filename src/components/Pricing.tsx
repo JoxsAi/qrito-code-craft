@@ -99,6 +99,7 @@ const Pricing = () => {
         t("Advanced customization options", "خيارات تخصيص متقدمة"),
         t("Logo embedding in QR codes", "تضمين الشعار في رموز QR"),
         t("Multiple download formats (PNG, JPG, SVG)", "تنزيلات بتنسيقات متعددة (PNG، JPG، SVG)"),
+        t("PDF download feature", "ميزة التنزيل بصيغة PDF"),
         t("Password protection for QR codes", "حماية كلمة المرور لرموز QR"),
         t("QR code history and management", "تاريخ وإدارة رموز QR"),
         t("Advanced error correction levels", "مستويات تصحيح أخطاء متقدمة"),

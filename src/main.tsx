@@ -19,46 +19,60 @@ const LoadingState = () => (
   </div>
 );
 
-// Function to load homepage ads immediately
+// Function to load homepage ads - improved reliability
 const loadHomepageAd = () => {
   try {
-    // Only load on homepage and not localhost
-    if ((window.location.pathname === '/' || window.location.pathname === '/index.html') && 
-        typeof window !== 'undefined' && 
-        window.location.hostname !== 'localhost') {
+    // Only load on homepage
+    const isHomepage = window.location.pathname === '/' || 
+                      window.location.pathname === '/index.html' ||
+                      window.location.pathname === '/index';
+    
+    // Don't load on localhost for development
+    const isProduction = window.location.hostname !== 'localhost' && 
+                        window.location.hostname !== '127.0.0.1';
+    
+    if (isHomepage && isProduction && typeof window !== 'undefined') {
       
-      // Remove any existing ad scripts first
-      const existingScript = document.querySelector('script[src*="profitableratecpm.com"]');
-      if (existingScript) {
-        existingScript.remove();
-      }
+      // Remove any existing ad scripts to prevent duplicates
+      const existingScripts = document.querySelectorAll('script[src*="profitableratecpm.com"]');
+      existingScripts.forEach(script => script.remove());
       
       const script = document.createElement('script');
       script.type = 'text/javascript';
       script.src = '//pl26659143.profitableratecpm.com/60/df/38/60df386dd2cfa2ac4a8c1e4294a705c6.js';
       script.async = false; // Load synchronously for immediate display
+      script.defer = false;
       
-      // Load immediately when site opens
       script.onload = () => {
-        console.log('Homepage ad loaded successfully');
-        // Try to find and position the ad
+        console.log('Homepage ad script loaded successfully');
+        // Try to position ad content after load
         setTimeout(() => {
-          const adElements = document.querySelectorAll('[id*="profitablerate"], [class*="profitablerate"]');
-          adElements.forEach(el => {
-            if (el.parentElement) {
-              el.parentElement.style.textAlign = 'center';
-              el.parentElement.style.margin = '10px auto';
-            }
-          });
+          const adContainer = document.getElementById('homepage-ad-container');
+          if (adContainer) {
+            // Ensure ad container is visible and styled properly
+            adContainer.style.display = 'block';
+            adContainer.style.textAlign = 'center';
+            adContainer.style.minHeight = '90px';
+          }
         }, 1000);
       };
       
       script.onerror = () => {
-        console.log('Homepage ad failed to load');
+        console.log('Homepage ad script failed to load - retrying...');
+        // Single retry after delay
+        setTimeout(() => {
+          const retryScript = document.createElement('script');
+          retryScript.type = 'text/javascript';
+          retryScript.src = '//pl26659143.profitableratecpm.com/60/df/38/60df386dd2cfa2ac4a8c1e4294a705c6.js';
+          retryScript.async = false;
+          retryScript.onload = () => console.log('Homepage ad loaded on retry');
+          retryScript.onerror = () => console.log('Homepage ad retry failed');
+          document.head.appendChild(retryScript);
+        }, 3000);
       };
       
-      // Append to body for immediate execution
-      document.body.appendChild(script);
+      // Append to head for immediate execution
+      document.head.appendChild(script);
     }
   } catch (error) {
     console.log('Error loading homepage ad script:', error);
@@ -69,17 +83,20 @@ const loadHomepageAd = () => {
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("Failed to find the root element");
 
-// Load ads immediately when site opens
+// Load ads with multiple triggers for reliability
 if (typeof window !== 'undefined') {
-  // Load immediately if DOM is ready
+  // Immediate load if DOM is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', loadHomepageAd);
   } else {
     loadHomepageAd();
   }
   
-  // Also ensure it loads after React renders
-  setTimeout(loadHomepageAd, 500);
+  // Additional triggers
+  window.addEventListener('load', loadHomepageAd);
+  
+  // Final attempt after app renders
+  setTimeout(loadHomepageAd, 1000);
 }
 
 // Render with Suspense for better UX during loading
